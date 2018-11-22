@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "remarker": "^1.9.4"
+  },
+  "name": "presentation-react-hooks",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "remarker serve"
+  }
+}
