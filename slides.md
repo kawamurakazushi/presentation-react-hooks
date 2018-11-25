@@ -35,7 +35,7 @@ import React, { Reducer, useEffect, useReducer } from "react";
 
 interface State {
   isFetchingPosts: boolean;
-  posts: Post[];
+  posts: Post[] | null;
 }
 
 type Actions =
@@ -72,16 +72,20 @@ const reducer: Reducer<State, Actions> = (state, action) => {
 
 ```typescript
 const Component = (/* some props */) => {
-  const [dispatch, state] = useReducer(reducer, { isFetchingPosts: false, posts: [] });
+  const [state, dispatch] = useReducer(reducer, { isFetchingPosts: false, posts: [] });
 
-  useEffect(() => {
+  const fetchPosts = async () => {
     dispatch({ type: 'FETCH_POSTS_INIT' });
     // Actually fetch data, building a `response` value
     if (!response.ok) {
       return dispatch({ type: 'FETCH_POSTS_FAILURE', payload: new Error('...') });
     }
 
-    return dispatch({ type: 'FETCH_POSTS_SUCCESS', payload: response.data });
+    return dispatch({ type: 'FETCH_POSTS_SUCCESS', payload: await response.json() });
+  };
+
+  useEffect(() => {
+    fetchPosts();
   }, []);
 
   return (
@@ -137,7 +141,7 @@ type Actions<T> =
 #### Logic - reducer
 
 ```typescript
-const reducer: Reducer<State, Actions> = (state, action) => {
+const reducer: Reducer<State<any>, Actions<any>> = (state, action) => {
   switch (action.type) {
     case "FETCH_INIT": {
       return { ...state, isFetching: true };
@@ -159,25 +163,31 @@ const reducer: Reducer<State, Actions> = (state, action) => {
 ### Logic - Hook body
 
 ```typescript
-const useFetch = (url: string) => {
-  const [dispatch, state] = useReducer(reducer, {
+// The return type has to be explicitly a Tuple
+export type UseFetchReturnType<T> = [State<T>, Dispatch<Actions<T>>];
+
+export function useFetch<T>(url: string): UseFetchReturnType<T> {
+  const [state, dispatch] = useReducer<State<T>, Actions<T>>(reducer, {
     isFetching: false,
     data: null
   });
 
-  useEffect(() => {
+  const fetchData = async () => {
     dispatch({ type: "FETCH_INIT" });
     // Fetch data...
     if (!response.ok) {
       return dispatch({ type: "FETCH_FAILURE", payload: new Error("...") });
     }
+    return dispatch({ type: "FETCH_SUCCESS", payload: await response.json() });
+  };
 
-    return dispatch({ type: "FETCH_SUCCESS", payload: response.data });
+  useEffect(() => {
+    fetchData();
   }, []);
 
   // We can also only return the state, to avoid the user to accidentaly change the state
-  return [dispatch, state];
-};
+  return [state, dispatch];
+}
 ```
 
 ---
@@ -187,30 +197,28 @@ const useFetch = (url: string) => {
 In `src/components/Posts.tsx`:
 
 ```typescript
+// Some types related to Post
+
 const Component = (/* some props */) => {
-  // On mount the data will be fetched, the component will be updated
-  // and `state.data` will contain the posts
-  const [dispatch, state] = useFetch(
-    'https://jsonplaceholder.typicode.com/posts',
+  const [state, dispatch] = useFetch<Post[]>(
+    "https://jsonplaceholder.typicode.com/posts"
   );
 
-  return (
-    // UI
-  );
+  return; // UI
 };
 ```
 
 In `src/components/Users.tsx`:
 
 ```typescript
+// Some types related to User
+
 const Component = (/* some props */) => {
-  const [dispatch, state] = useFetch(
-    'https://jsonplaceholder.typicode.com/users',
+  const [state, dispatch] = useFetch<User[]>(
+    "https://jsonplaceholder.typicode.com/users"
   );
 
-  return (
-    // UI
-  );
+  return; // UI
 };
 ```
 
@@ -249,7 +257,7 @@ If we use the `useFetch` hook as is at the top level it may become tedious to sh
 // Toplevel component
 const App = (/* some props */) => {
   // `state.data` will be null then the current user
-  const [dispatch, state] = useFetch("https://www.myapi/current-user");
+  const [state, dispatch] = useFetch("https://www.myapi/current-user");
   // ...
 
   return (
@@ -279,10 +287,12 @@ Then we can use, or the context's consumer, or the `useContext` hook.
 ```typescript
 import React, { createContext } from "react";
 
-import { useFetch } from "../hooks/fetch";
+import { useFetch } from "../hooks/useFetch";
+
+// Some types related to User
 
 // We know the Value passed to the Context will be exactly the value returned by the Hook
-type Value = ReturnType<typeof useFetch>;
+type Value = UseFetchReturnType<User>;
 
 // We export the Context so it can be used with `useContext`
 export const Context = createContext<Value>(null as any);
@@ -296,7 +306,7 @@ interface Props {
 // The consumer does not need any customization here
 export const Consumer = Context.Consumer;
 
-export const Provider = ({ url }: Props) => {
+export const Provider = ({ children, url }: Props) => {
   const value: Value = useFetch(url);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
@@ -329,7 +339,7 @@ const App = (/* some props */) => {
 ```typescript
 const DeeplyNestedComponent = (/* some props */) => {
   // `state.data` being null or the current user here
-  return <Fetch.Consumer>{([_, state]) => state.data}</Fetch.Consumer>;
+  return <Fetch.Consumer>{([state]) => state.data}</Fetch.Consumer>;
 };
 ```
 
@@ -339,7 +349,7 @@ const DeeplyNestedComponent = (/* some props */) => {
 
 ```typescript
 const DeeplyNestedComponent = (/* some props */) => {
-  const [_, state] = useContext(Fetch.Context);
+  const [state] = useContext(Fetch.Context);
 
   // `state.data` being null or the current user here
   return <>{state.data}</>;
