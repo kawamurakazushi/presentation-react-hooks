@@ -1,10 +1,16 @@
+class: middle, center
+
 # Hello React!
 
 ---
 
-## A new architecture
+class: middle, center
+
+## A new Architecture
 
 ---
+
+class: middle, center
 
 ### Some rules
 
@@ -18,7 +24,7 @@
 
 Let's say we want to fetch some posts from a server with this API: https://jsonplaceholder.typicode.com/posts.
 
-Using the Context API we now know about we can naively implement this kind of solution:
+Using the Context API, we can naively implement this kind of solution:
 
 #### Types
 
@@ -98,6 +104,12 @@ class: middle, center
 
 ---
 
+class: middle, center
+
+### Let's try to split the View and the Hook
+
+---
+
 ### Example (with hook)
 
 We will now try to implement the same logic using Hooks
@@ -163,6 +175,7 @@ const useFetch = (url: string) => {
     return dispatch({ type: "FETCH_SUCCESS", payload: response.data });
   }, []);
 
+  // We can also only return the state, to avoid the user to accidentaly change the state
   return [dispatch, state];
 };
 ```
@@ -175,7 +188,8 @@ In `src/components/Posts.tsx`:
 
 ```typescript
 const Component = (/* some props */) => {
-  // On mount the data will be fetched, the component will be updated, and `state.data` will contain the posts
+  // On mount the data will be fetched, the component will be updated
+  // and `state.data` will contain the posts
   const [dispatch, state] = useFetch(
     'https://jsonplaceholder.typicode.com/posts',
   );
@@ -202,6 +216,8 @@ const Component = (/* some props */) => {
 
 ---
 
+class: middle, center
+
 ### What about the components?
 
 Two kinds of components:
@@ -210,6 +226,8 @@ Two kinds of components:
 - **SimpleComponent**: the simple "dumb" Components. They will just use `ContextfulComponents` and other "dumb" components.
 
 ---
+
+class: middle, center
 
 ### ContextfulComponents
 
@@ -221,7 +239,7 @@ Two kinds of components:
 
 ### Hooks limitation
 
-In our previous example, we needed to fetch some posts, and some users dynamically. We had a `/posts` route and a `/users` routes.
+In our previous example, we needed to fetch some posts, and some users dynamically. We had a `/posts` route and a `/users` route.
 
 Now, what if we needed some data when initializing the application? Like the connected user data for instance?
 
@@ -246,35 +264,91 @@ const App = (/* some props */) => {
 
 ---
 
+class: middle, center
+
 ### A solution: The "Abstract Contextful Component"
 
 In order to solve this kind of problems, as we already said, we need a context.
 
 Then we can use, or the context's consumer, or the `useContext` hook.
 
-Here comes the Abstract Contextful Component:
+---
+
+### Here comes the Abstract Contextful Component:
 
 ```typescript
-// Example
+import React, { createContext } from "react";
+
+import { useFetch } from "../hooks/fetch";
+
+// We know the Value passed to the Context will be exactly the value returned by the Hook
+type Value = ReturnType<typeof useFetch>;
+
+// We export the Context so it can be used with `useContext`
+export const Context = createContext<Value>(null as any);
+
+// The props are similar to the hook arguments
+interface Props {
+  children?: React.ReactNode;
+  url: string;
+}
+
+// The consumer does not need any customization here
+export const Consumer = Context.Consumer;
+
+export const Provider = ({ url }: Props) => {
+  const value: Value = useFetch(url);
+
+  return <Context.Provider value={value}>{children}</Context.Provider>;
+};
 ```
 
 ---
 
-### Example - Abstract Contextful Component - use with Consumer
+### Example - Abstract Contextful Component - App
 
 ```typescript
-// Example
+// Toplevel component
+const App = (/* some props */) => {
+  // ...
+  return (
+    // ...
+    <Fetch.Provider url="https://www.myapi/current-user">
+      <Layout
+      /* No need to pass props anymore */
+      />
+    </Fetch.Provider>
+  );
+};
 ```
 
 ---
 
-### Example - Abstract Contextful Component - use with useContext
+### Example - Abstract Contextful Component - Use with Consumer
 
 ```typescript
-// Example
+const DeeplyNestedComponent = (/* some props */) => {
+  // `state.data` being null or the current user here
+  return <Fetch.Consumer>{([_, state]) => state.data}</Fetch.Consumer>;
+};
 ```
 
 ---
+
+### Example - Abstract Contextful Component - Use with useContext
+
+```typescript
+const DeeplyNestedComponent = (/* some props */) => {
+  const [_, state] = useContext(Fetch.Context);
+
+  // `state.data` being null or the current user here
+  return <>{state.data}</>;
+};
+```
+
+---
+
+class: middle, center
 
 ### SimpleComponents
 
@@ -285,22 +359,13 @@ Here comes the Abstract Contextful Component:
 
 ---
 
-### Example
-
-```typescript
-// Example
-```
-
----
-
 ### Folders organization (example)
 
-Now we have some powerful `hooks` in our toolbox, the folders may be look like the follow:
-
 ```
-  /hooks
-  /componentsWithContext
-  /componentsWithoutContext
+  /src
+    /hooks
+    /contextfulComponents
+    /simpleComponents
 ```
 
 ---
