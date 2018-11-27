@@ -379,3 +379,192 @@ class: middle, center
 ```
 
 ---
+
+class: middle, center
+
+## Edge cases
+
+---
+
+class: middle, center
+
+### Can I map over provider/consumer couples?
+
+---
+
+#### Example - A simple ContextfulComponent
+
+```typescript
+// Imports and types
+
+export const Context = createContext<Value>(null as any);
+
+export const Provider = ({ children, name }: ProviderProps) => {
+  const [currentName, setCurrentName] = useState(name);
+
+  return (
+    <Context.Provider
+      value={{ currentName, message: `Hello ${currentName}`, setCurrentName }}
+    >
+      {children}
+    </Context.Provider>
+  );
+};
+
+export const Consumer = Context.Consumer;
+```
+
+---
+
+#### Example - Let's map over it!
+
+```typescript
+[1, 2, 3].map((_, index) => (
+  <Message.Provider name="mapping" key={index}>
+    <Message.Consumer>
+      {({ currentName, message, setCurrentName }) => (
+        <div>
+          // We display the message here for the moment
+          {message}
+          <div>
+            <input
+              // Boilerplate code to actually set the name
+              onChange={({ currentTarget: { value } }) => setCurrentName(value)}
+              value={currentName}
+            />
+          </div>
+        </div>
+      )}
+    </Message.Consumer>
+  </Message.Provider>
+));
+```
+
+---
+
+class: center, middle
+
+### It looks good, but now, what if I want to display the message in a _different place_?
+
+---
+
+class: center, middle
+
+### Two solutions
+
+- We can "merge" the state into one, and make the Provider handle several values
+
+#### or
+
+- We can use an "index" in a dedicated state, inside the parent Component
+
+_Notice that this does not make the parent Component a `ContextfulComponent`. The parent can remain a `SimpleComponent`._
+
+---
+
+#### Example - The Parent - Inputs
+
+```typescript
+// We can declare our umbrella state and initialize it
+const [names, setNames] = useState(Array(3).fill("troubles"));
+
+return (
+  //...
+  // Notice how we map over the `names` here
+  {names.map((name, index) => (
+    // The rest is similar...
+    <Message.Provider name={name} key={index}>
+      <Message.Consumer>
+        {({ currentName, setCurrentName }) => (
+          <input
+            onChange={({ currentTarget: { value } }) => {
+              // ...except here, we may need to sync the values and update both the states
+              setCurrentName(value);
+              setNames([
+                ...names.slice(0, index),
+                value,
+                ...names.slice(index + 1, names.length)
+              ]);
+            }}
+            value={currentName}
+          />
+        )}
+      </Message.Consumer>
+    </Message.Provider>
+  ))}
+  //...
+);
+```
+
+---
+
+#### Example - The Parent - Messages
+
+```typescript
+//...
+{
+  names.map((name, index) => (
+    <Message.Provider name={name} key={index}>
+      <Message.Consumer>
+        {value => <SmartConsumer {...value} currentName={name} />} // <-- We use a Component here
+      </Message.Consumer>
+    </Message.Provider>
+  ));
+}
+//...
+```
+
+---
+
+#### Example - The SmartConsumer Component
+
+```typescript
+const SmartConsumer = ({
+  currentName,
+  message,
+  setCurrentName
+}: Message.Value) => {
+  // We might need to keep the state sync
+  useEffect(
+    () => {
+      setCurrentName(currentName);
+    },
+    [currentName]
+  );
+
+  return <div>{message}</div>;
+};
+```
+
+---
+
+class: center, middle
+
+### It's basically what we would do to solve the same issue using `StatefulComponent`
+
+_Elm or frameworks implementing the The Elm Architecture would use the same kind of structure as well_
+
+_Notice that for this example, we could have dropped most of the sync logic (and probably some Provider/Consumer as well)_
+
+---
+
+class: center, middle
+
+- fetching the same data for several use cases
+  - example (prefectures)
+  - solution 1 - fetch in the provider, put the provider at the top level
+  - solution 2 - cache
+    - `useFetchPrefectures` cannot help (it's an "instance")
+    - apollo, or fetch has to be cached
+    - bottleneck schema
+
+---
+
+class: center, middle
+
+### Let's summarize, some rules
+
+- When you have complex, shared logic, create a custom hook, it's better to have hooks used once, than to duplicate complex code in several components
+- If you need this logic to be shared between Parents/Deeply nested children, wrap it in a ContextfulComponent
+- A `SimpleComponent` should become a `ContextfulComponent` _if and only if_ it contains a state that has to be shared
+- When you need to map over Provider/Consumer couples, and need the logic in several places of your page, merge the states, or "index" them
