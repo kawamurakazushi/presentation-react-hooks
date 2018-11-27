@@ -1,0 +1,3 @@
+remarkConfig:
+  highlightLanguage: typescript
+  ratio: "16:9"
