@@ -592,6 +592,8 @@ What if we wanted to fetch the coutries when needed, and then cache them??
 
 ### The "bottleneck" schema
 
+![Schema](./assets/bottleneck.svg)
+
 ---
 
 class: center, middle
