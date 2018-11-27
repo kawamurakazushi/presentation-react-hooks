@@ -1,6 +1,17 @@
 class: middle, center
 
-# Hello React!
+# Hooks and Context, the way to a new architecture
+
+---
+
+class: middle, center
+
+## What we will cover during this presentation
+
+- The Context API
+- The new Hooks API
+- Some clues for more modern and more flexible architecture
+- The edge cases
 
 ---
 
@@ -379,3 +390,327 @@ class: middle, center
 ```
 
 ---
+
+class: middle, center
+
+## Edge cases
+
+---
+
+class: middle, center
+
+### Can I map over provider/consumer couples?
+
+---
+
+#### Example - A simple ContextfulComponent
+
+```typescript
+// Imports and types
+
+export const Context = createContext<Value>(null as any);
+
+export const Provider = ({ children, name }: ProviderProps) => {
+  const [currentName, setCurrentName] = useState(name);
+
+  return (
+    <Context.Provider
+      value={{ currentName, message: `Hello ${currentName}`, setCurrentName }}
+    >
+      {children}
+    </Context.Provider>
+  );
+};
+
+export const Consumer = Context.Consumer;
+```
+
+---
+
+#### Example - Let's map over it!
+
+```typescript
+[1, 2, 3].map((_, index) => (
+  <Message.Provider name="mapping" key={index}>
+    <Message.Consumer>
+      {({ currentName, message, setCurrentName }) => (
+        <div>
+          // We display the message here for the moment
+          {message}
+          <div>
+            <input
+              // Boilerplate code to actually set the name
+              onChange={({ currentTarget: { value } }) => setCurrentName(value)}
+              value={currentName}
+            />
+          </div>
+        </div>
+      )}
+    </Message.Consumer>
+  </Message.Provider>
+));
+```
+
+---
+
+class: center, middle
+
+### It looks good, but now, what if I want to display the message in a _different place_?
+
+---
+
+class: center, middle
+
+### Two solutions
+
+- We can "merge" the state into one, and make the Provider handle several values
+
+#### or
+
+- We can use an "index" in a dedicated state, inside the parent Component
+
+_Notice that this does not make the parent Component a `ContextfulComponent`. The parent can remain a `SimpleComponent`._
+
+---
+
+#### Example - The Parent - Inputs
+
+```typescript
+// We can declare our umbrella state and initialize it
+const [names, setNames] = useState(Array(3).fill("troubles"));
+
+return (
+  //...
+  // Notice how we map over the `names` here
+  {names.map((name, index) => (
+    // The rest is similar...
+    <Message.Provider name={name} key={index}>
+      <Message.Consumer>
+        {({ currentName, setCurrentName }) => (
+          <input
+            onChange={({ currentTarget: { value } }) => {
+              // ...except here, we may need to sync the values and update both the states
+              setCurrentName(value);
+              setNames([
+                ...names.slice(0, index),
+                value,
+                ...names.slice(index + 1, names.length)
+              ]);
+            }}
+            value={currentName}
+          />
+        )}
+      </Message.Consumer>
+    </Message.Provider>
+  ))}
+  //...
+);
+```
+
+---
+
+#### Example - The Parent - Messages
+
+```typescript
+//...
+{
+  names.map((name, index) => (
+    <Message.Provider name={name} key={index}>
+      <SmartConsumer name={name} /> // <- We use a Component here
+    </Message.Provider>
+  ));
+}
+//...
+```
+
+---
+
+#### Example - The SmartConsumer Component
+
+```typescript
+const SmartConsumer = ({ name }: ConsumerProps) => {
+  const { message, setCurrentName } = useContext(Message.Context);
+
+  useEffect(
+    () => {
+      setCurrentName(name);
+    },
+    [name]
+  );
+
+  return <div>{message}</div>;
+};
+```
+
+---
+
+class: center, middle
+
+### It's basically what we would do to solve the same issue using `StatefulComponent`
+
+_Elm or frameworks implementing the The Elm Architecture would use the same kind of structure as well_
+
+_Notice that for this example, we could have dropped most of the sync logic (and probably some Provider/Consumer as well)_
+
+---
+
+class: center, middle
+
+### An other edge case: Fetching the exact set of data, use it in several places
+
+---
+
+### Problem
+
+Let's say we have a backoffice application where we can create different kind of users, using different forms.
+
+For all the user kinds, we'll need to provide the country they were born in.
+
+The list is not hard coded, it's fetched from a server! But we don't want to fetch it several times...
+
+If we have a `useCountries` hook, and `Countries` ContextfulComponent, everytime we will use the `Provider`, a request will be performed. It's impossible to cache the data at the hook level, or at the Context level...
+
+How could we solve this?
+
+---
+
+class: middle, center
+
+### Solution(s)
+
+- Quick win: we put the provider at the top level of our application.
+
+It works, and it fits most of the use cases.
+
+But what if we didn't want to fetch the data everytime?
+
+What if we wanted to fetch the coutries when needed, and then cache them??
+
+- We need to cache at the request level. With a wrapper around `fetch` (or using the cache system provided by some GraphQl clients like Apollo)
+
+---
+
+### The "bottleneck" schema
+
+![Schema](./assets/bottleneck.svg)
+
+---
+
+class: center, middle
+
+## Cons so far...
+
+- Still experimental (available with React 16.7-alpha\* only)
+- May lead to some code smell, like the Providers pyramid of doom, or the Provider/Context couples
+
+---
+
+### The Providers pyramid of doom
+
+```typescript
+const App = () => {
+  //...
+  return (
+    <FetchSomethingProvider>
+      <SuperUsefulProvider>
+        <DoACriticallyImportantThingProvider>
+          <WhateverProvider>
+          //...
+            <AppEntryPoint /> // <- Finally!
+          // ...
+          </WhateverProvider>
+        </DoACriticallyImportantThingProvider>
+      </SuperUsefulProvider>
+    </FetchSomethingProvider>
+  );
+}
+```
+
+---
+
+### Avoiding it using a coroutine - The coroutine
+
+```typescript
+const coroutine = <Props>(
+  generator: (props: Props) => IterableIterator<JSX.Element>
+): React.ComponentType<Props> => (props: Props) => {
+  const iterator = generator(props);
+
+  const rec = (Component: JSX.Element, done: boolean): JSX.Element => {
+    if (!done) {
+      const { done, value } = iterator.next();
+
+      return React.cloneElement(Component, { children: rec(value, done) });
+    }
+
+    return Component;
+  };
+
+  const { done, value } = iterator.next();
+
+  return rec(value, done);
+};
+```
+
+---
+
+### Avoiding it using a coroutine - Using the coroutine
+
+```typescript
+// We wrap a component in the coroutine...
+const App = coroutine(() => {
+  //...
+  //...so we can `yield` the needed providers
+  yield <FetchSomethingProvider />;
+  yield <SuperUsefulProvider />;
+  yield <DoACriticallyImportantThingProvider />;
+  yield <WhateverProvider />;
+
+  return (
+    <AppEntryPoint />
+  );
+});
+```
+
+---
+
+## Pyramid of doom with the Consumers
+
+```typescript
+//...
+<Provider1>
+  <Consumer1>
+    //...
+    <Provider2>
+      <Consumer2 />
+    </Provider2>
+    //...
+  </Consumer1>
+</Provider1>
+```
+
+---
+
+class: center, middle
+
+## Pyramid of doom with the Consumers: How to solve it
+
+- Everytime you need a Consumer, you should consider creating a separated Component!
+- So that you can use the `useContext` hook
+
+---
+
+class: center, middle
+
+### Let's summarize, some rules
+
+- When you have complex, shared logic, create a custom hook, it's better to have hooks used once, than to duplicate complex code in several components
+- If you need this logic to be shared between Parents/Deeply nested children, wrap it in a ContextfulComponent
+- A `SimpleComponent` should become a `ContextfulComponent` _if and only if_ it contains a state that has to be shared
+- When you need to map over Provider/Consumer couples, and need the logic in several places of your page, merge the states, or "index" them
+
+---
+
+class: center, middle
+
+# Enjoy the Hooks!!
