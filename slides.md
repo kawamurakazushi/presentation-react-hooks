@@ -1,6 +1,17 @@
 class: middle, center
 
-# Hello React!
+# Hooks and Context, the way to a new architecture
+
+---
+
+class: middle, center
+
+## What we will cover during this presentation
+
+- The Context API
+- The new Hooks API
+- Some clues for more modern and more flexible architecture
+- The edge cases
 
 ---
 
@@ -505,9 +516,7 @@ return (
 {
   names.map((name, index) => (
     <Message.Provider name={name} key={index}>
-      <Message.Consumer>
-        {value => <SmartConsumer {...value} currentName={name} />} // <-- We use a Component here
-      </Message.Consumer>
+      <SmartConsumer name={name} /> // <- We use a Component here
     </Message.Provider>
   ));
 }
@@ -519,17 +528,14 @@ return (
 #### Example - The SmartConsumer Component
 
 ```typescript
-const SmartConsumer = ({
-  currentName,
-  message,
-  setCurrentName
-}: Message.Value) => {
-  // We might need to keep the state sync
+const SmartConsumer = ({ name }: ConsumerProps) => {
+  const { message, setCurrentName } = useContext(Message.Context);
+
   useEffect(
     () => {
-      setCurrentName(currentName);
+      setCurrentName(name);
     },
-    [currentName]
+    [name]
   );
 
   return <div>{message}</div>;
@@ -550,13 +556,145 @@ _Notice that for this example, we could have dropped most of the sync logic (and
 
 class: center, middle
 
-- fetching the same data for several use cases
-  - example (prefectures)
-  - solution 1 - fetch in the provider, put the provider at the top level
-  - solution 2 - cache
-    - `useFetchPrefectures` cannot help (it's an "instance")
-    - apollo, or fetch has to be cached
-    - bottleneck schema
+### An other edge case: Fetching the exact set of data, use it in several places
+
+---
+
+### Problem
+
+Let's say we have a backoffice application where we can create different kind of users, using different forms.
+
+For all the user kinds, we'll need to provide the country they were born in.
+
+The list is not hard coded, it's fetched from a server! But we don't want to fetch it several times...
+
+If we have a `useCountries` hook, and `Countries` ContextfulComponent, everytime we will use the `Provider`, a request will be performed. It's impossible to cache the data at the hook level, or at the Context level...
+
+How could we solve this?
+
+---
+
+class: middle, center
+
+### Solution(s)
+
+- Quick win: we put the provider at the top level of our application.
+
+It works, and it fits most of the use cases.
+
+But what if we didn't want to fetch the data everytime?
+
+What if we wanted to fetch the coutries when needed, and then cache them??
+
+- We need to cache at the request level. With a wrapper around `fetch` (or using the cache system provided by some GraphQl clients like Apollo)
+
+---
+
+### The "bottleneck" schema
+
+---
+
+class: center, middle
+
+## Cons so far...
+
+- Still experimental (available with React 16.7-alpha\* only)
+- May lead to some code smell, like the Providers pyramid of doom, or the Provider/Context couples
+
+---
+
+### The Providers pyramid of doom
+
+```typescript
+const App = () => {
+  //...
+  return (
+    <FetchSomethingProvider>
+      <SuperUsefulProvider>
+        <DoACriticallyImportantThingProvider>
+          <WhateverProvider>
+          //...
+            <AppEntryPoint /> // <- Finally!
+          // ...
+          </WhateverProvider>
+        </DoACriticallyImportantThingProvider>
+      </SuperUsefulProvider>
+    </FetchSomethingProvider>
+  );
+}
+```
+
+---
+
+### Avoiding it using a coroutine - The coroutine
+
+```typescript
+const coroutine = <Props>(
+  generator: (props: Props) => IterableIterator<JSX.Element>
+): React.ComponentType<Props> => (props: Props) => {
+  const iterator = generator(props);
+
+  const rec = (Component: JSX.Element, done: boolean): JSX.Element => {
+    if (!done) {
+      const { done, value } = iterator.next();
+
+      return React.cloneElement(Component, { children: rec(value, done) });
+    }
+
+    return Component;
+  };
+
+  const { done, value } = iterator.next();
+
+  return rec(value, done);
+};
+```
+
+---
+
+### Avoiding it using a coroutine - Using the coroutine
+
+```typescript
+// We wrap a component in the coroutine...
+const App = coroutine(() => {
+  //...
+  //...so we can `yield` the needed providers
+  yield <FetchSomethingProvider />;
+  yield <SuperUsefulProvider />;
+  yield <DoACriticallyImportantThingProvider />;
+  yield <WhateverProvider />;
+
+  return (
+    <AppEntryPoint />
+  );
+});
+```
+
+---
+
+## Pyramid of doom with the Consumers
+
+```typescript
+//...
+<Provider1>
+  <Consumer1>
+    //...
+    <Provider2>
+      <Consumer2 />
+    </Provider2>
+    //...
+  </Consumer1>
+</Provider1>
+```
+
+---
+
+class: center, middle
+
+## Pyramid of doom with the Consumers: How to solve it
+
+- Everytime you need a Consumer, you should consider creating a separated Component!
+- So that you can use the `useContext` hook
 
 ---
 
@@ -568,3 +706,9 @@ class: center, middle
 - If you need this logic to be shared between Parents/Deeply nested children, wrap it in a ContextfulComponent
 - A `SimpleComponent` should become a `ContextfulComponent` _if and only if_ it contains a state that has to be shared
 - When you need to map over Provider/Consumer couples, and need the logic in several places of your page, merge the states, or "index" them
+
+---
+
+class: center, middle
+
+# Enjoy the Hooks!!
