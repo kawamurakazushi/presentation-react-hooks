@@ -17,6 +17,171 @@ class: middle, center
 
 class: middle, center
 
+## The Context API
+
+---
+
+class: middle, center
+
+## The Hooks API
+
+---
+
+class: middle
+
+> Hooks are a new feature proposal that lets you use state and other React features without writing a class. They’re currently in **React v16.7.0-alpha**
+
+---
+
+### What does Hook solve?
+
+React Component is great to organize large UI into small, independent, and reusuable pieces.
+
+However, it is quite challenging to break down complex components, since the logic is **stateful** and can't be extracted to a function or other component.
+
+---
+
+### Complex components, with logic all over the lifecyle
+
+```typescript
+class App extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { name: "Kawamura", like: "curry" };
+  }
+  componentDidMount() {
+    fetchA();
+    fetchB();
+    subscribe();
+  }
+  componentWillUpdate(props) {
+    if (props.a !== this.props.a) fetchA();
+    if (props.b !== this.props.b) fetchB();
+  }
+  componentWillUnmount() { unSubscribe(); }
+  handleNameChange(event) { this.setState({ name: event.target.value }); }
+  render() { ... }
+}
+```
+
+The business logic, in all _lifecycle methods_ are _internally_ **inconsistent**, `componentDidMount` for instance will fetch `A` and `B` here.
+
+Also, if we wanted to extract the methods, the logic would be **split apart**.
+
+Basically, instead of splitting the code for **technical reasons**, we want to split **by concern**. 😇
+
+---
+
+### Some Solutions.
+
+- Context
+- Render props
+- Higher Order Components
+
+These patterns require you to restructure your components.  
+Which can be **tedious**, make the code harder to follow, and also creates **false hierarchy**.
+
+```typescript
+<ProviderA>
+  <ProviderB>
+    <SomeRenderProps>{({ data }) => <div>{data}</div>}</SomeRenderProps>
+  </ProviderB>
+  <RenderProps>{({ data }) => <div>{data}</div>}</SomeRenderProps>
+</ProviderA>
+```
+
+Wouldn't it be easier to have **one** common way to share logic between components?  
+... functions?
+
+Functions _can't have local state_.
+
+---
+
+### Reusing stateful logic between Components.
+
+**Hooks** are a greak solution for solving these problems.
+
+Hooks let us use React features, like the `statefullness`, `lifecycle`, etc.. from a function.
+
+We can extract and share the logic inside a component into reusable independent functions without changing your component hierarchy.
+
+---
+
+### Example - Without Hooks
+
+```typescript
+class App extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { name: "Kawamura", favoriteFood: "curry" };
+    this.handleNameChange = this.handleNameChange.bind(this);
+    this.handleFavoriteFoodChange = this.handleFavoriteFoodChange.bind(this);
+  }
+  handleNameChange(event) {
+    this.setState({ name: event.target.value });
+  }
+  handleFavoriteFoodChange(event) {
+    this.setState({ favoriteFood: event.target.value });
+  }
+  render() {
+    const { name, favoriteFood } = this.state;
+    return (
+      <>
+        <input value={name} onChange={handleNameChange} />
+        <input value={favoriteFood} onChange={handleFavoriteFood} />
+      </>
+    );
+  }
+}
+```
+
+---
+
+### Example - With Hooks - useState
+
+```typescript
+import React, { useState } from "react";
+
+const App = () => {
+  const [name, handleName] = useState("Kawamura");
+  const [favoriteFood, handleFoodName] = useState("curry");
+  return (
+    <>
+      <input value={name} onChange={handleNameChange} />
+      <input value={favoriteFood} onChange={handleFavoriteFood} />
+    </>
+  );
+};
+```
+
+---
+
+### Hooks - useState
+
+---
+
+### Example - useEffect
+
+---
+
+### Example - useContext
+
+---
+
+### Example - useReducer
+
+---
+
+### For more information
+
+<!-- ![Dan_Hook_Presentation](./assets/youtube_hooks.png) -->
+<img src="./assets/youtube_hooks.png" width="80%">
+_https://youtu.be/dpw9EHDh2bM_
+
+---
+
+class: middle, center
+
 ## A new Architecture
 
 ---
