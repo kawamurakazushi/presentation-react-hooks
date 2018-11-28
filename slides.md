@@ -1,10 +1,10 @@
-class: middle, center
+class: center, middle
 
 # Hooks and Context, the way to a new architecture
 
 ---
 
-class: middle, center
+class: middle
 
 ## What we will cover during this presentation
 
@@ -15,13 +15,166 @@ class: middle, center
 
 ---
 
-class: middle, center
+class: center, middle
 
 ## The Context API
 
 ---
 
-class: middle, center
+class: middle
+
+### A word on render props
+
+- You can pass anything as props to a Component...
+- ...including a function! This is a render prop
+- A render prop can be a `children` as well!
+
+---
+
+### Why?
+
+Let's say we have a super smart component, the **parent**, that fetches the current connected user from an API.
+
+And a toolbar, the **child**, that accepts this user as a prop, to display the data properly.
+
+How can we update the child component accordingly?
+
+```typescript
+<FetchCurrentUser>
+  <Toolbar /> // <- How can we pass the fetched user to this component?
+</FetchCurrentUser>
+```
+
+---
+
+### How?
+
+.center[![close vs render props](./assets/cloneXrenderProps.svg)]
+
+---
+
+### Example
+
+```typescript
+// Types and imports
+const FetchCurrentUser = ({ children }: FetchCurrentUserProps) => {
+  // Fetch the current user
+
+  return <>{children({ currentUser })}</>;
+};
+
+const Toolbar = ({ currentUser }: ToolbarProps) => {
+  return (
+    // UI
+  )
+};
+
+// then...
+<FetchCurrentUser>
+  {props => <Toolbar {...props} />}
+</FetchCurrentUser>
+
+// or
+// Notice that here the Toolbar component is not created with React.createElement
+// and will not be considered a Component by React it's critical to understand
+// this before we discuss about the Hooks
+<FetchCurrentUser>
+  {Toolbar}
+</FetchCurrentUser>
+```
+
+---
+
+### How is it related to the Context API?
+
+Everything is fine, we can pass the current use _down_ to the children, but what if we wanted to use the currentUser in two different components? Like Toolbar _and_ a Profile component?
+
+And what if, they were mounted in two different branch of our application tree, like in the following:
+
+![context1](./assets/context1.svg)
+
+---
+
+### Simple solution
+
+We need to find the first common ancestor, here `app`, and perform the logic here.
+
+Then we can pass down the props to every children, and sub-children...
+
+Meaning:
+
+- Many components will receive props they are not concerned of at all
+- It can get super messy, and really tedious
+- Refactoring this kind of application, without a type language like Flow, TypeScript, or ReasonML, **will** be a nightmare
+
+---
+
+### Context to the rescue!
+
+- The Context itself is _not new_, it has always existed...
+- ...hidden behind an undocumented API
+- The proper API is new (> React 16), it took some time to design it
+- Libraries like Redux or Redux-Form actually use the Context (think about the `Provider` component exposed by Redux), but still use the old, undocumented API
+
+_If Redux uses it, it means we **can** everything we used to solve with it, with the Context API_
+
+Some limitations:
+
+- No proper Debug system
+- You can connect a context to the Redux Devtool, but you have to do so manually
+
+---
+
+### createContext
+
+In order to create a context, we can use the `createContext` function exposed by React:
+
+```typescript
+const { Consumer, Provider } = createContext(defaultValue);
+```
+
+And that's it!
+
+The `createContext` takes a _defaultValue_ (which is not an _initialValue_, more on this later), and returns an object containing a `Consumer` and a `Provider`.
+
+---
+
+### Provider/Consumer - Example
+
+```typescript
+const { Consumer, Provider } = createContext("hello"); // <- Not the initial value
+
+const DeeplyNestedComponent = () => (
+  <Consumer>{value => <div>{value}</div>}</Consumer>
+);
+
+const NestedComponent = () => <DeeplyNestedComponent />; // <- No props!
+// Will generate <div>hello</div>
+const _ = (
+  <Provider value="hello">
+    <NestedComponent /> // <- No props!
+  </Provider>
+);
+```
+
+---
+
+### Additional word
+
+`defaultValue` is _not_ `initialValue`, it's the value that will be passed to the Consumer, if it's not wrapped in a Provider.
+
+```typescript
+const { Consumer, Provider } = createContext("hello");
+
+// This will generate `<div>hello</div>`
+const _ = <Consumer>{value => <div>{value}</div>}</Consumer>;
+```
+
+It's not something you should care too much about, since you should nest your Consumers in Providers.
+
+---
+
+class: center, middle
 
 ## The Hooks API
 
@@ -172,21 +325,22 @@ const App = () => {
 
 ---
 
+class: center, middle
+
 ### For more information
 
-<!-- ![Dan_Hook_Presentation](./assets/youtube_hooks.png) -->
-<img src="./assets/youtube_hooks.png" width="80%">
+<img src="./assets/youtubeHooks.svg" width="80%">
 _https://youtu.be/dpw9EHDh2bM_
 
 ---
 
-class: middle, center
+class: center, middle
 
 ## A new Architecture
 
 ---
 
-class: middle, center
+class: middle
 
 ### Some rules
 
@@ -272,19 +426,19 @@ const Component = (/* some props */) => {
 
 ---
 
-class: middle, center
+class: center, middle
 
 ## What if I want to fetch an other resource?
 
 ---
 
-class: middle, center
+class: center, middle
 
 ### I will need to copy paste most of the logic...
 
 ---
 
-class: middle, center
+class: center, middle
 
 ### Let's try to split the View and the Hook
 
@@ -400,7 +554,7 @@ const Component = (/* some props */) => {
 
 ---
 
-class: middle, center
+class: middle
 
 ### What about the components?
 
@@ -411,7 +565,7 @@ Two kinds of components:
 
 ---
 
-class: middle, center
+class: middle
 
 ### ContextfulComponents
 
@@ -448,7 +602,7 @@ const App = (/* some props */) => {
 
 ---
 
-class: middle, center
+class: center, middle
 
 ### A solution: The "Abstract Contextful Component"
 
@@ -534,7 +688,7 @@ const DeeplyNestedComponent = (/* some props */) => {
 
 ---
 
-class: middle, center
+class: middle
 
 ### SimpleComponents
 
@@ -544,6 +698,8 @@ class: middle, center
 - Modular, UI oriented
 
 ---
+
+class: middle
 
 ### Folders organization (example)
 
@@ -556,13 +712,13 @@ class: middle, center
 
 ---
 
-class: middle, center
+class: center, middle
 
 ## Edge cases
 
 ---
 
-class: middle, center
+class: center, middle
 
 ### Can I map over provider/consumer couples?
 
@@ -624,7 +780,7 @@ class: center, middle
 
 ---
 
-class: center, middle
+class: middle
 
 ### Two solutions
 
@@ -739,7 +895,7 @@ How could we solve this?
 
 ---
 
-class: middle, center
+class: middle
 
 ### Solution(s)
 
@@ -761,7 +917,7 @@ What if we wanted to fetch the coutries when needed, and then cache them??
 
 ---
 
-class: center, middle
+class: middle
 
 ## Cons so far...
 
@@ -856,7 +1012,7 @@ const App = coroutine(() => {
 
 ---
 
-class: center, middle
+class: middle
 
 ## Pyramid of doom with the Consumers: How to solve it
 
@@ -865,7 +1021,7 @@ class: center, middle
 
 ---
 
-class: center, middle
+class: middle
 
 ### Let's summarize, some rules
 
