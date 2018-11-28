@@ -1,6 +1,6 @@
 remarkConfig:
-  highlightLanguage: typescript
   ratio: "16:9"
+  highlightLanguage: tsx
 cssFiles:
   - https://cdn.jsdelivr.net/gh/3stadt/presla@master/static/css/theme-presla.css
   - https://cdn.jsdelivr.net/gh/yihui/xaringan@master/inst/rmarkdown/templates/xaringan/resources/rutgers.css
