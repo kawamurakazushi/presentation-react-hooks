@@ -97,9 +97,9 @@ const Toolbar = ({ currentUser }: ToolbarProps) => {
 
 ### How is it related to the Context API?
 
-Everything is fine, we can pass the current use _down_ to the children, but what if we wanted to use the currentUser in two different components? Like Toolbar _and_ a Profile component?
+Everything is fine, we can pass the `currentUser` _down_ to the children, but what if we wanted to use the `currentUser` in two different components? Like Toolbar _and_ a Profile component?
 
-And what if, they were mounted in two different branch of our application tree, like in the following:
+And what if, they were mounted in two different branches in our application tree, like in the following:
 
 ![context1](./assets/context1.svg)
 
@@ -115,7 +115,7 @@ Meaning:
 
 - Many components will receive props they are not concerned of at all
 - It can get super messy, and really tedious
-- Refactoring this kind of application, without a type language like Flow, TypeScript, or ReasonML, **will** be a nightmare
+- Refactoring this kind of application, without a typed language like Flow, TypeScript, or ReasonML, **will** be a nightmare
 
 ---
 
@@ -123,14 +123,14 @@ Meaning:
 
 - The Context itself is _not new_, it has always existed...
 - ...hidden behind an undocumented API
-- The proper API is new (> React 16), it took some time to design it
+- The proper API is new (> React 16.3), it took some time to design it
 - Libraries like Redux or Redux-Form actually use the Context (think about the `Provider` component exposed by Redux), but still use the old, undocumented API
 
-_If Redux uses it, it means we **can** everything we used to solve with it, with the Context API_
+_Since Redux uses the Context, it means we **can** do what Redux did with the Context API_
 
 Some limitations:
 
-- No proper Debug system
+- Lack of tooling
 - You can connect a context to the Redux Devtool, but you have to do so manually
 
 ---
@@ -159,8 +159,9 @@ const DeeplyNestedComponent = () => (
 );
 
 const NestedComponent = () => <DeeplyNestedComponent />; // <- No props!
+
 // Will generate <div>hello</div>
-const _ = (
+const App = () => (
   <Provider value="hello">
     <NestedComponent /> // <- No props!
   </Provider>
@@ -177,10 +178,16 @@ const _ = (
 const { Consumer, Provider } = createContext("hello");
 
 // This will generate `<div>hello</div>`
-const _ = <Consumer>{value => <div>{value}</div>}</Consumer>;
+const App = () => <Consumer>{value => <div>{value}</div>}</Consumer>;
 ```
 
-It's not something you should care too much about, since you should nest your Consumers in Providers.
+It's not something you should care too much about, since you should always nest your Consumers in Providers.
+
+---
+
+class: center, middle
+
+![question mark](./assets/questionMark.svg)
 
 ---
 
@@ -192,7 +199,7 @@ class: center, middle
 
 class: middle
 
-> Hooks are a new feature proposal that lets you use state and other React features without writing a class. They’re currently in **React v16.7.0-alpha**
+> Hooks are a new feature proposal that lets you use state and other React features without writing a class. They’re currently in **React v16.7.0-alpha\***
 
 ---
 
@@ -231,7 +238,11 @@ The business logic, in all _lifecycle methods_ are _internally_ **inconsistent**
 
 Also, if we wanted to extract the methods, the logic would be **split apart**.
 
-Basically, instead of splitting the code for **technical reasons**, we want to split **by concern**. 😇
+---
+
+class: center, middle
+
+#### Basically, instead of splitting the code for **technical reasons**, we want to split it **by concern**. 😇
 
 ---
 
@@ -266,7 +277,7 @@ Functions _can't have local state_.
 
 Hooks let us use React features, like the `statefullness`, `lifecycle`, etc.. from a function.
 
-We can extract and share the logic inside a component into reusable independent functions without changing your component hierarchy.
+We can extract and share the logic inside a component into reusable independent functions without changing our component hierarchy.
 
 ---
 
@@ -398,6 +409,8 @@ class App extends React.Component {
 
 Not just consume the data, but it also subscribe to the context.
 
+It will get the Context of the **closest** Provider in the tree.
+
 ```tsx
 import React, { useContext } from "react";
 import { ThemeContext, LocaleContext } from "./myContexts";
@@ -464,7 +477,7 @@ const App = props => {
 ```
 
 - First argument is a `function` that will be triggered after performing the DOM updates. (componentDidMount, componentWillUpdate)
-- You can tell React to skip applying an effect if certain values haven’t changed between re-renders. To do so, pass an array of "inputs" as an optional second argument to `useEffect`:
+- You can tell React to skip applying an effect if certain values haven’t changed between re-renders. To do so, pass an array of "inputs" as an optional second argument to `useEffect`
 
 <!-- By default the effect will be triggered in every render, but you can optmize it by giving it an array as an optional second arguement.  -->
 
@@ -482,6 +495,7 @@ const [state, dispatch] = useReducer(reducer, initialState);
 
 - Accepts a reducer of type `(state, action) => newState`.
 - Returns the current `state` paired with a `dispatch` method.
+- The API is very similar to the Redux's one (`Dispatch`, `Reducer`, `State`, `Action`, etc...)
 
 ---
 
@@ -536,6 +550,12 @@ class: center, middle
 
 <img src="./assets/youtubeHooks.svg" width="80%">
 _https://youtu.be/dpw9EHDh2bM_
+
+---
+
+class: center, middle
+
+![question mark](./assets/questionMark.svg)
 
 ---
 
@@ -633,7 +653,7 @@ const Component = (/* some props */) => {
 
 class: center, middle
 
-## What if I want to fetch an other resource?
+### What if I want to fetch an other resource?
 
 ---
 
@@ -784,7 +804,9 @@ class: middle
 
 In our previous example, we needed to fetch some posts, and some users dynamically. We had a `/posts` route and a `/users` route.
 
-Now, what if we needed some data when initializing the application? Like the connected user data for instance?
+Now, what if we needed some data when initializing the application?
+
+Like the current connected user for instance?
 
 If we use the `useFetch` hook as is at the top level it may become tedious to share the user data with the children, like this:
 
@@ -914,6 +936,12 @@ class: middle
     /contextfulComponents
     /simpleComponents
 ```
+
+---
+
+class: center, middle
+
+![question mark](./assets/questionMark.svg)
 
 ---
 
@@ -1082,7 +1110,7 @@ _Notice that for this example, we could have dropped most of the sync logic (and
 
 class: center, middle
 
-### An other edge case: Fetching the exact set of data, use it in several places
+### An other edge case: Fetching the exact same set of data, use it in several places
 
 ---
 
@@ -1110,7 +1138,7 @@ It works, and it fits most of the use cases.
 
 But what if we didn't want to fetch the data everytime?
 
-What if we wanted to fetch the coutries when needed, and then cache them??
+What if we wanted to fetch the countries when needed, and then cache them??
 
 - We need to cache at the request level. With a wrapper around `fetch` (or using the cache system provided by some GraphQl clients like Apollo)
 
@@ -1122,12 +1150,18 @@ What if we wanted to fetch the coutries when needed, and then cache them??
 
 ---
 
+class: center, middle
+
+![question mark](./assets/questionMark.svg)
+
+---
+
 class: middle
 
 ## Cons so far...
 
 - Still experimental (available with React 16.7-alpha\* only)
-- May lead to some code smell, like the Providers pyramid of doom, or the Provider/Context couples
+- May lead to some code smell, like the Providers pyramid of doom, or the Provider/Consumer couples
 
 ---
 
@@ -1200,7 +1234,7 @@ const App = coroutine(() => {
 
 ---
 
-## Pyramid of doom with the Consumers
+### Pyramid of doom with the Consumers
 
 ```tsx
 //...
@@ -1219,7 +1253,7 @@ const App = coroutine(() => {
 
 class: middle
 
-## Pyramid of doom with the Consumers: How to solve it
+### Pyramid of doom with the Consumers: How to solve it
 
 - Everytime you need a Consumer, you should consider creating a separated Component!
 - So that you can use the `useContext` hook
@@ -1230,8 +1264,8 @@ class: middle
 
 ### Let's summarize, some rules
 
-- When you have complex, shared logic, create a custom hook, it's better to have hooks used once, than to duplicate complex code in several components
-- If you need this logic to be shared between Parents/Deeply nested children, wrap it in a ContextfulComponent
+- When you have complex, shared logic, create a custom hook, it's better to have hooks used once, than to duplicate complex code in several components. Also, you can consider creating your hooks library at some point, so you can share the hooks between the projects
+- If you need this logic to be shared between Parents/Deeply nested children, wrap it in an Abstract Contextful Component
 - A `SimpleComponent` should become a `ContextfulComponent` _if and only if_ it contains a state that has to be shared
 - When you need to map over Provider/Consumer couples, and need the logic in several places of your page, merge the states, or "index" them
 
@@ -1240,3 +1274,9 @@ class: middle
 class: center, middle
 
 # Enjoy the Hooks!!
+
+---
+
+class: center, middle
+
+![question mark](./assets/questionMark.svg)
