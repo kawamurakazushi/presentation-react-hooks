@@ -2,6 +2,8 @@ class: center, middle
 
 # Hooks and Context, the way to a new architecture
 
+Kevin & Kawamura
+
 ---
 
 class: middle
@@ -29,6 +31,14 @@ class: middle
 - ...including a function! This is a render prop
 - A render prop can be a `children` as well!
 
+```tsx
+<DataProvider render={data => <h1>Hello {data.target}</h1>} />
+```
+
+https://reactjs.org/docs/render-props.html
+
+<!-- It's an actual react pattern, And lot's of famous react libraries like React Router, Downshift uses it. -->
+
 ---
 
 ### Why?
@@ -39,7 +49,7 @@ And a toolbar, the **child**, that accepts this user as a prop, to display the d
 
 How can we update the child component accordingly?
 
-```typescript
+```tsx
 <FetchCurrentUser>
   <Toolbar /> // <- How can we pass the fetched user to this component?
 </FetchCurrentUser>
@@ -51,11 +61,13 @@ How can we update the child component accordingly?
 
 .center[![close vs render props](./assets/cloneXrenderProps.svg)]
 
+<!-- We will not go deep into cloning elements but render props might be good suite in this ssituation -->
+
 ---
 
 ### Example
 
-```typescript
+```tsx
 // Types and imports
 const FetchCurrentUser = ({ children }: FetchCurrentUserProps) => {
   // Fetch the current user
@@ -64,9 +76,7 @@ const FetchCurrentUser = ({ children }: FetchCurrentUserProps) => {
 };
 
 const Toolbar = ({ currentUser }: ToolbarProps) => {
-  return (
-    // UI
-  )
+  return ; // UI
 };
 
 // then...
@@ -129,7 +139,7 @@ Some limitations:
 
 In order to create a context, we can use the `createContext` function exposed by React:
 
-```typescript
+```tsx
 const { Consumer, Provider } = createContext(defaultValue);
 ```
 
@@ -141,7 +151,7 @@ The `createContext` takes a _defaultValue_ (which is not an _initialValue_, more
 
 ### Provider/Consumer - Example
 
-```typescript
+```tsx
 const { Consumer, Provider } = createContext("hello"); // <- Not the initial value
 
 const DeeplyNestedComponent = () => (
@@ -163,7 +173,7 @@ const _ = (
 
 `defaultValue` is _not_ `initialValue`, it's the value that will be passed to the Consumer, if it's not wrapped in a Provider.
 
-```typescript
+```tsx
 const { Consumer, Provider } = createContext("hello");
 
 // This will generate `<div>hello</div>`
@@ -196,7 +206,7 @@ However, it is quite challenging to break down complex components, since the log
 
 ### Complex components, with logic all over the lifecyle
 
-```typescript
+```tsx
 class App extends React.Component {
   constructor(props) {
     super(props);
@@ -234,7 +244,7 @@ Basically, instead of splitting the code for **technical reasons**, we want to s
 These patterns require you to restructure your components.  
 Which can be **tedious**, make the code harder to follow, and also creates **false hierarchy**.
 
-```typescript
+```tsx
 <ProviderA>
   <ProviderB>
     <SomeRenderProps>{({ data }) => <div>{data}</div>}</SomeRenderProps>
@@ -262,7 +272,7 @@ We can extract and share the logic inside a component into reusable independent 
 
 ### Example - Without Hooks
 
-```typescript
+```tsx
 class App extends React.Component {
   constructor(props) {
     super(props);
@@ -292,16 +302,24 @@ class App extends React.Component {
 
 ### Example - With Hooks - useState
 
-```typescript
+```tsx
 import React, { useState } from "react";
 
 const App = () => {
-  const [name, handleName] = useState("Kawamura");
-  const [favoriteFood, handleFoodName] = useState("curry");
+  const [name, setName] = useState("Kawamura");
+  const [favoriteFood, setFavFoodName] = useState("curry");
+
+  const handleNameChange = e => {
+    setName(e.target.value);
+  };
+
+  const handleFavFoodNameChange = e => {
+    setFavFoodName(e.target.value);
+  };
   return (
     <>
       <input value={name} onChange={handleNameChange} />
-      <input value={favoriteFood} onChange={handleFavoriteFood} />
+      <input value={favoriteFood} onChange={handleFavFoodNameChange} />
     </>
   );
 };
@@ -309,19 +327,206 @@ const App = () => {
 
 ---
 
-### Hooks - useState
+### Hooks - State
+
+**useState**
+
+```tsx
+import { useState } from "react";
+
+function Example() {
+  // Declare a new state variable, which we'll call "count"
+  const [count, setCount] = useState(0);
+
+  return (
+    <div>
+      <p>You clicked {count} times</p>
+      <button onClick={() => setCount(count + 1)}>Click me</button>
+    </div>
+  );
+}
+```
+
+- Called inside a function component to add _local state_.
+- React will preserve this state between re-renders.
+- `useState` returns a pair: the current state value and a function that lets you update the state.
+
+The first argument is the _initial state_.  
+Unlike `this.state`, the state here doesn’t have to be an object.
+
+<!-- So now we can manipulate the react local state from a functional component  -->
 
 ---
 
-### Example - useEffect
+### Example - Without Hook - Context
+
+<!-- What if we want to read some Context?, Let's see what it will be like in the class Component. -->
+<!-- It's often used for to read the Theme or current Locale and so on , and this is how we consumer context-->
+<!-- I will be importing ThemeContext, and LocaleContext. and behind the Provider is been wrapped with the context -->
+
+- Uses the `Consumer` from the context, and consumes the data.
+- Uses render props.
+
+```tsx
+import { ThemeContext, LocaleContext } from "./myContexts";
+
+class App extends React.Component {
+  render() {
+    return (
+      <ThemeContext.Consumer>
+        {theme => (
+          <LocaleContext.Consumer>
+            {locale => <div className={theme}>{locale}</div>}
+          </LocaleContext.Consumer>
+        )}
+      </ThemeContext.Consumer>
+    );
+  }
+}
+```
+
+<!-- False hierarchy, complex render props.-->
 
 ---
 
-### Example - useContext
+### Example - With Hook - Context
+
+<!-- So, how can we do this with hooks?, We will "use Context", from react. And reads the context in the render-->
+<!-- It just not read the context, but also subscribes to the context, which means that the component will re-render when the context has changed. -->
+
+**useContext**
+
+Not just consume the data, but it also subscribe to the context.
+
+```tsx
+import React, { useContext } from "react";
+import { ThemeContext, LocaleContext } from "./myContexts";
+
+const App = () => {
+  const theme = useContext(ThemeContext);
+  const locale = useContext(LocaleContext);
+
+  return <div className={theme}>{locale}</div>;
+};
+```
 
 ---
 
-### Example - useReducer
+### Example - Without Hook - Effects
+
+<!-- Next, what if we want to use some lifecycle methods., Let's see what it will be like in the class Component. -->
+<!-- You’ve likely performed data fetching, subscriptions, or manually changing the DOM from React components before. We call these operations “side effects” (or “effects” for short) because they can affect other components and can’t be done during rendering. -->
+
+What happens if you want to use the lifecyle method from the React.Component class?
+
+- Data fetching, subscriptions, or manually changing the DOM from React components.
+
+```tsx
+class App extends React.Component {
+  componentDidMount() {
+    API.subscribeToMessage(this.props.id);
+  }
+  componentWillUpdate() {
+    API.subscribeToMessage(this.props.id);
+  }
+  componentWillMount() {
+    API.unsubscribeToMessage(this.props.id);
+  }
+  render() {
+    return; // UI
+  }
+}
+```
+
+---
+
+### Example - With Hook - Effect
+
+**useEffect**
+
+```tsx
+import React, { useEffect } from "react";
+
+const App = props => {
+  useEffect(
+    () => {
+      API.subscribeToMessage(props.id);
+
+      return () => {
+        API.unSubscribeToMessage(props.id);
+      };
+    },
+    [props.id] // Only re-subscribe if props.id changes
+  );
+
+  return; // UI
+};
+```
+
+- First argument is a `function` that will be triggered after performing the DOM updates. (componentDidMount, componentWillUpdate)
+- You can tell React to skip applying an effect if certain values haven’t changed between re-renders. To do so, pass an array of "inputs" as an optional second argument to `useEffect`:
+
+<!-- By default the effect will be triggered in every render, but you can optmize it by giving it an array as an optional second arguement.  -->
+
+---
+
+### Hooks - Reducer
+
+**useReducer**
+
+Alternative to to `useState`.
+
+```tsx
+const [state, dispatch] = useReducer(reducer, initialState);
+```
+
+- Accepts a reducer of type `(state, action) => newState`.
+- Returns the current `state` paired with a `dispatch` method.
+
+---
+
+### Example - Reducer
+
+```tsx
+const initialState = { count: 0 };
+
+function reducer(state, action) {
+  switch (action.type) {
+    case "increment":
+      return { count: state.count + 1 };
+    case "decrement":
+      return { count: state.count - 1 };
+    default:
+      return state;
+  }
+}
+
+function Counter({ initialCount }) {
+  const [state, dispatch] = useReducer(reducer, { count: initialCount });
+  return (
+    <>
+      Count: {state.count}
+      <button onClick={() => dispatch({ type: "increment" })}>+</button>
+      <button onClick={() => dispatch({ type: "decrement" })}>-</button>
+    </>
+  );
+}
+```
+
+---
+
+### Hooks - Rules!
+
+#### Only Call Hooks at the Top Level
+
+Don’t call Hooks inside loops, conditions, or nested functions. Instead, always use Hooks at the top level of your React function.
+
+#### Only Call Hooks from React Functions
+
+Don’t call Hooks from regular JavaScript functions.
+
+There are some eslint plugins, for linting.  
+_https://www.npmjs.com/package/eslint-plugin-react-hooks_
 
 ---
 
@@ -358,7 +563,7 @@ Using the Context API, we can naively implement this kind of solution:
 
 #### Types
 
-```typescript
+```tsx
 import React, { Reducer, useEffect, useReducer } from "react";
 
 // Define some types related to the posts
@@ -378,7 +583,7 @@ type Actions =
 
 #### Logic - reducer
 
-```typescript
+```tsx
 const reducer: Reducer<State, Actions> = (state, action) => {
   switch (action.type) {
     case "FETCH_POSTS_INIT": {
@@ -400,7 +605,7 @@ const reducer: Reducer<State, Actions> = (state, action) => {
 
 #### Logic - Component
 
-```typescript
+```tsx
 const Component = (/* some props */) => {
   const [state, dispatch] = useReducer(reducer, { isFetchingPosts: false, posts: [] });
 
@@ -452,7 +657,7 @@ In `/src/hooks/useFetch.ts`:
 
 #### Types (everything is now dynamic)
 
-```typescript
+```tsx
 import { Reducer, useEffect, useReducer } from "react";
 
 interface State<T> {
@@ -470,7 +675,7 @@ type Actions<T> =
 
 #### Logic - reducer
 
-```typescript
+```tsx
 const reducer: Reducer<State<any>, Actions<any>> = (state, action) => {
   switch (action.type) {
     case "FETCH_INIT": {
@@ -492,7 +697,7 @@ const reducer: Reducer<State<any>, Actions<any>> = (state, action) => {
 
 ### Logic - Hook body
 
-```typescript
+```tsx
 // The return type has to be explicitly a Tuple
 export type UseFetchReturnType<T> = [State<T>, Dispatch<Actions<T>>];
 
@@ -526,7 +731,7 @@ export function useFetch<T>(url: string): UseFetchReturnType<T> {
 
 In `src/components/Posts.tsx`:
 
-```typescript
+```tsx
 // Some types related to Post
 
 const Component = (/* some props */) => {
@@ -540,7 +745,7 @@ const Component = (/* some props */) => {
 
 In `src/components/Users.tsx`:
 
-```typescript
+```tsx
 // Some types related to User
 
 const Component = (/* some props */) => {
@@ -583,7 +788,7 @@ Now, what if we needed some data when initializing the application? Like the con
 
 If we use the `useFetch` hook as is at the top level it may become tedious to share the user data with the children, like this:
 
-```typescript
+```tsx
 // Toplevel component
 const App = (/* some props */) => {
   // `state.data` will be null then the current user
@@ -614,7 +819,7 @@ Then we can use, or the context's consumer, or the `useContext` hook.
 
 ### Here comes the Abstract Contextful Component:
 
-```typescript
+```tsx
 import React, { createContext } from "react";
 
 import { useFetch } from "../hooks/useFetch";
@@ -647,7 +852,7 @@ export const Provider = ({ children, url }: Props) => {
 
 ### Example - Abstract Contextful Component - App
 
-```typescript
+```tsx
 // Toplevel component
 const App = (/* some props */) => {
   // ...
@@ -666,7 +871,7 @@ const App = (/* some props */) => {
 
 ### Example - Abstract Contextful Component - Use with Consumer
 
-```typescript
+```tsx
 const DeeplyNestedComponent = (/* some props */) => {
   // `state.data` being null or the current user here
   return <Fetch.Consumer>{([state]) => state.data}</Fetch.Consumer>;
@@ -677,7 +882,7 @@ const DeeplyNestedComponent = (/* some props */) => {
 
 ### Example - Abstract Contextful Component - Use with useContext
 
-```typescript
+```tsx
 const DeeplyNestedComponent = (/* some props */) => {
   const [state] = useContext(Fetch.Context);
 
@@ -726,7 +931,7 @@ class: center, middle
 
 #### Example - A simple ContextfulComponent
 
-```typescript
+```tsx
 // Imports and types
 
 export const Context = createContext<Value>(null as any);
@@ -750,7 +955,7 @@ export const Consumer = Context.Consumer;
 
 #### Example - Let's map over it!
 
-```typescript
+```tsx
 [1, 2, 3].map((_, index) => (
   <Message.Provider name="mapping" key={index}>
     <Message.Consumer>
@@ -796,7 +1001,7 @@ _Notice that this does not make the parent Component a `ContextfulComponent`. Th
 
 #### Example - The Parent - Inputs
 
-```typescript
+```tsx
 // We can declare our umbrella state and initialize it
 const [names, setNames] = useState(Array(3).fill("troubles"));
 
@@ -832,7 +1037,7 @@ return (
 
 #### Example - The Parent - Messages
 
-```typescript
+```tsx
 //...
 {
   names.map((name, index) => (
@@ -848,7 +1053,7 @@ return (
 
 #### Example - The SmartConsumer Component
 
-```typescript
+```tsx
 const SmartConsumer = ({ name }: ConsumerProps) => {
   const { message, setCurrentName } = useContext(Message.Context);
 
@@ -928,7 +1133,7 @@ class: middle
 
 ### The Providers pyramid of doom
 
-```typescript
+```tsx
 const App = () => {
   //...
   return (
@@ -951,7 +1156,7 @@ const App = () => {
 
 ### Avoiding it using a coroutine - The coroutine
 
-```typescript
+```tsx
 const coroutine = <Props>(
   generator: (props: Props) => IterableIterator<JSX.Element>
 ): React.ComponentType<Props> => (props: Props) => {
@@ -977,7 +1182,7 @@ const coroutine = <Props>(
 
 ### Avoiding it using a coroutine - Using the coroutine
 
-```typescript
+```tsx
 // We wrap a component in the coroutine...
 const App = coroutine(() => {
   //...
@@ -997,7 +1202,7 @@ const App = coroutine(() => {
 
 ## Pyramid of doom with the Consumers
 
-```typescript
+```tsx
 //...
 <Provider1>
   <Consumer1>
