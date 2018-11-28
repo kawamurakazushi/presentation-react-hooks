@@ -21,6 +21,7 @@
 ## Hooks
 
 - `useEffect`
+
   - basic usage
   - inputs? (the array)
   - alternative to the lifecycle
@@ -28,7 +29,8 @@
     - examples
   - no async code inside
   - only use to actually "trigger" an async stuff
-- alternatives `useMutationEffect` and `useLayoutEffect`
+  - alternatives `useMutationEffect` and `useLayoutEffect`
+
 - `useState` + `useReducer`
   - example
 - creating a custom hook
