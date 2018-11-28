@@ -35,9 +35,9 @@ class: middle
 
 ### What does Hook solve?
 
-React Component is great to organize large UI into small, independent, and reusuable piece.
+React Component is great to organize large UI into small, independent, and reusuable pieces.
 
-However, it is quite challenging to break down complex components, since the logic is **stateful** and can't be extracted to a function or another component.
+However, it is quite challenging to break down complex components, since the logic is **stateful** and can't be extracted to a function or other component.
 
 ---
 
@@ -64,9 +64,11 @@ class App extends React.Component {
 }
 ```
 
-Each _lifecycle methods_ is consisted with **unrelated logics**, and the related code that changes together gets **split apart**.
+The business logic, in all _lifecycle methods_ are _internally_ **inconsistent**, `componentDidMount` for instance will fetch `A` and `B` here.
 
-Very difficult to maintain 😇
+Also, if we wanted to extract the methods, the logic would be **split apart**.
+
+Basically, instead of splitting the code for **technical reasons**, we want to split **by concern**. 😇
 
 ---
 
@@ -76,8 +78,8 @@ Very difficult to maintain 😇
 - Render props
 - Higher Order Components
 
-These patterns requires you to restructure your components.  
-Which can be **tedious**, make code harder to follow, and also creates **false hierarchy**.
+These patterns require you to restructure your components.  
+Which can be **tedious**, make the code harder to follow, and also creates **false hierarchy**.
 
 ```typescript
 <ProviderA>
@@ -97,12 +99,11 @@ Functions _can't have local state_.
 
 ### Reusing stateful logic between Components.
 
-**Hooks** are greak solution for solving these problems.
+**Hooks** are a greak solution for solving these problems.
 
-Hooks let us use React features from a function.  
-It can process throught `state`, `context`, and `lifecycle`.
+Hooks let us use React features, like the `statefullness`, `lifecycle`, etc.. from a function.
 
-We can extract and share the logic inside a component into reusable independent function without changing your component hireachy.
+We can extract and share the logic inside a component into reusable independent functions without changing your component hierarchy.
 
 ---
 
@@ -159,15 +160,15 @@ const App = () => {
 
 ---
 
-### Example - useEffects
+### Example - useEffect
 
 ---
 
-### Example - useContexts
+### Example - useContext
 
 ---
 
-### Example - useReducers
+### Example - useReducer
 
 ---
 
@@ -199,7 +200,7 @@ class: middle, center
 
 Let's say we want to fetch some posts from a server with this API: https://jsonplaceholder.typicode.com/posts.
 
-Using the Context API, we can natively implement this kind of solution:
+Using the Context API, we can naively implement this kind of solution:
 
 #### Types
 
